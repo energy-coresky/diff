@@ -1,0 +1,20 @@
+{
+  "name": "energy/diff",
+  "description": "Compare files with Diff class",
+  "keywords": ["energy", "diff", "coresky"],
+  "homepage": "https://coresky.net",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+       "name": "Energy",
+       "homepage": "https://coresky.net/"
+    }
+  ],
+  "require": {
+    "php": ">=5.3.0"
+  },
+  "autoload": {
+    "psr-0": {"Diff": ""}
+  }
+}
