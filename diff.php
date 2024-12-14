@@ -41,8 +41,8 @@ class Diff
     }
 
     static function diff(string $new, string $old, $mode = false, int $boundary = 3) {
-        $N = count($new = explode("\n", unl($new)));
-        $L = count($old = explode("\n", unl($old)));
+        $N = count($new = explode("\n", str_replace(["\r\n", "\r"], "\n", $new)));
+        $L = count($old = explode("\n", str_replace(["\r\n", "\r"], "\n", $old)));
         $diff = $eq = [];
         for ($rN = '', $n = $l = $rest = 0; $n < $N && $l < $L; ) {
             $sn = pos($new);
