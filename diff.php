@@ -3,7 +3,7 @@
 class Diff
 {
     static function diffx(string $new, string $old, $boundary = 3, $in = false) {
-        $ary = self::diff($new, $old, true, $boundary);
+        $ary = self::do($new, $old, true, $boundary);
         $out = $plus = '';
         $add = $sub = $j = $last = 0;
         $rest = $ary && is_int($last = $ary[0][0]) ? array_shift($ary) : false;
@@ -39,7 +39,7 @@ class Diff
         return [$out, $add, $sub];
     }
 
-    static function diff(string $new, string $old, $mode = false, int $boundary = 3) {
+    static function do(string $new, string $old, $mode = false, int $boundary = 3) {
         $new = explode("\n", str_replace(["\r\n", "\r"], "\n", $new));
         $old = explode("\n", str_replace(["\r\n", "\r"], "\n", $old));
         $diff = $eq = [];
