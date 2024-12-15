@@ -7,26 +7,25 @@ class Diff
         $out = $plus = '';
         $add = $sub = $j = $last = 0;
         $rest = $ary && is_int($last = $ary[0][0]) ? array_shift($ary) : false;
-        $len = $last > 999 ? 4 : 3;
-        $break = $last > 999 ? " =========\n" : " =======\n";
-        $in or $in = fn($x, $l, $n, $s) => ('=' == $x ? ' ' : ('+' == $x ? '+' : '-'))
-            . sprintf("%{$len}s|%{$len}s %s\n", $l, $n, $s);
+        $gt = $last > 999;
+        $len = $gt ? 4 : 3;
+        $in or $in = fn($l, $n, $s, $x = '+') => sprintf("$x%{$len}s|%{$len}s %s\n", $l, $n, $s);
         if ($ary || $rest) {
             foreach ($ary as $v) {
-                [$xn, $n, $new, $l, $old] = $v;
-                if ('+' == $xn || '*' == $xn) {
+                [$x, $n, $new, $l, $old] = $v;
+                if ('+' == $x || '*' == $x) {
                     $add++;
-                    $plus .= $in('+', $j = '', $n, $new);
+                    $plus .= $in($j = '', $n, $new);
                 }
-                if ('+' != $xn) {
-                    if ($eq = '=' == $xn) {
+                if ('+' != $x) {
+                    if ($eq = '=' == $x) {
                         if ($j && ++$j != $n && !$plus)
-                            $out .= $break;
+                            $out .= ' =======' . ($gt ? '==' : '') . "\n";
                         [$out, $plus, $j] = [$out . $plus, '', $n];
                     } else {
                         $sub++;
                     }
-                    $out .= $in($xn, $l, $eq ? $n : '', $old);
+                    $out .= $in($l, $eq ? $n : '', $old, '=' == $x ? ' ' : '-');
                 }
             }
             $out .= $plus;
@@ -34,69 +33,44 @@ class Diff
                 $cnt = count($ary = $rest[1] ?: $rest[2]);
                 ($plus = (bool)$rest[1]) ? ($add += $cnt) : ($sub += $cnt);
                 foreach ($ary as $i => $v)
-                    $out .= $plus ? $in('+', '', $last + $i, $v) : $in('-', $last + $i, '', $v);
+                    $out .= $plus ? $in('', $last + $i, $v) : $in($last + $i, '', $v, '-');
             }
         }
         return [$out, $add, $sub];
     }
 
     static function diff(string $new, string $old, $mode = false, int $boundary = 3) {
-        $N = count($new = explode("\n", str_replace(["\r\n", "\r"], "\n", $new)));
-        $L = count($old = explode("\n", str_replace(["\r\n", "\r"], "\n", $old)));
+        $new = explode("\n", str_replace(["\r\n", "\r"], "\n", $new));
+        $old = explode("\n", str_replace(["\r\n", "\r"], "\n", $old));
         $diff = $eq = [];
-        for ($rN = '', $n = $l = $rest = 0; $n < $N && $l < $L; ) {
-            $sn = pos($new);
-            $sl = pos($old);
-            if ($sn === $sl) {
-                if ($rest) {
-                    $rest--;
-                    $diff[] = ['=', ++$n, $sn, ++$l, $sl];
-                } else {
-                    $eq[] = ['=', ++$n, $sn, ++$l, $sl];
-                }
-                $rN .= '=';
-                array_shift($new);
-                array_shift($old);
+        for ($rN = '', $n = $l = $rest = 0; $new && $old; $rN .= $chr) {
+            if (($sn = $new[0]) == ($sl = $old[0])) {
+                $ary = [$chr = '=', ++$n, $sn, ++$l, $sl];
+                $rest++ ? ($diff[] = $ary) : ($eq[] = $ary);
+                $rest < 1 or $rest = 0;
             } else {
-                if ($eq)
-                    $diff = array_merge($diff, array_slice($eq, -$boundary));
+                $diff = array_merge($diff, array_slice($eq, $rest = -$boundary));
                 $eq = [];
-                $rest = $boundary;
-                $fn = array_keys($old, $sn);
                 $fl = array_keys($new, $sl);
-                if (!$fn && !$fl) {
-                    $rN .= '*';
-                    $diff[] = ['*', ++$n, $sn, ++$l, $sl];
-                    array_shift($new);
-                    array_shift($old);
+                if (!($fn = array_keys($old, $sn)) && !$fl) {
+                    $diff[] = [$chr = '*', ++$n, $sn, ++$l, $sl];
                 } elseif (!$fn) {
-                    $rN .= '+';
-                    $diff[] = ['+', ++$n, $sn, 0, ''];
-                    array_shift($new);
+                    $diff[] = [$chr = '+', ++$n, $sn, 0, ''];
                 } elseif (!$fl) {
-                    $rN .= '.';
-                    $diff[] = ['.', 0, '', ++$l, $sl];
-                    array_shift($old);
+                    $diff[] = [$chr = '.', 0, '', ++$l, $sl];
                 } else { # both found
-                    $tn = pos($fn);
-                    $tl = pos($fl);
-                    for ($in = 1; ($new[$in] ?? 0) === ($old[$tn + $in] ?? 1); $in++);
-                    for ($il = 1; ($old[$il] ?? 0) === ($new[$tl + $il] ?? 1); $il++);
-                    if ($in / ++$tn / count($fn) < $il / ++$tl / count($fl)) {
-                        $rN .= '+';
-                        $diff[] = ['+', ++$n, $sn, 0, ''];
-                        array_shift($new);
-                    } else {
-                        $rN .= '.';
-                        $diff[] = ['.', 0, '', ++$l, $sl];
-                        array_shift($old);
-                    }
+                    for ($in = 1, $tn = $fn[0]; ($new[$in] ?? 0) === ($old[$tn + $in] ?? 1); $in++);
+                    for ($il = 1, $tl = $fl[0]; ($old[$il] ?? 0) === ($new[$tl + $il] ?? 1); $il++);
+                    $diff[] = $in / ++$tn / count($fn) < $il / ++$tl / count($fl)
+                        ? [$chr = '+', ++$n, $sn, 0, '']
+                        : [$chr = '.', 0, '', ++$l, $sl];
                 }
             }
+            '.' == $chr or array_shift($new);
+            '+' == $chr or array_shift($old);
         }
-        $rest = max($N -= $n, $L -= $l);
         if (!$mode)
-            return $rN . str_pad('', $rest, $N > $L ? '+' : '.');
-        return $rest ? array_merge([[$N > $L ? ++$n : ++$l, $new, $old]], $diff) : $diff;
+            return $rN . str_pad('', count($new ?: $old), $new ? '+' : '.');
+        return $new || $old ? array_merge([[$new ? ++$n : ++$l, $new, $old]], $diff) : $diff;
     }
 }
